@@ -19,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS for mobile responsiveness
 st.markdown("""
     <style>
         .main {
@@ -64,6 +64,17 @@ st.markdown("""
         .info-box {
             background-color: #D4E6F1;
             border: 1px solid #3498DB;
+        }
+        @media (max-width: 768px) {
+            .stButton>button {
+                height: 2.5em;
+            }
+            .recorder-button {
+                padding: 8px 16px !important;
+            }
+            .status-box {
+                padding: 0.5rem;
+            }
         }
     </style>
 """, unsafe_allow_html=True)
