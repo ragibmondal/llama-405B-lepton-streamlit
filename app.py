@@ -40,20 +40,21 @@ st.markdown("""
         
         .message-container {
             display: flex;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1rem !important;
+            margin: 0.5rem 0;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            margin-bottom: 1rem !important;
         }
         
         .user-message {
-            background-color: #e7f5ff;
-            border: 1px solid #d0ebff;
+            background-color: #e7f5ff !important;
+            border: 1px solid #d0ebff !important;
         }
         
         .assistant-message {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
+            background-color: #f8f9fa !important;
+            border: 1px solid #e9ecef !important;
         }
         
         .message-avatar {
@@ -283,19 +284,23 @@ def render_input_area(client):
     """Render the input area with text and voice options"""
     st.markdown('<div class="input-container">', unsafe_allow_html=True)
     
+    # Initialize session state for input reset
+    if "reset_input" not in st.session_state:
+        st.session_state.reset_input = False
+        
     col1, col2, col3 = st.columns([6, 1, 1])
     
     with col1:
-        # Initialize session state for user input if it doesn't exist
-        if "user_input" not in st.session_state:
-            st.session_state.user_input = ""
-            
+        # Set empty default value when reset is triggered
+        default_value = "" if st.session_state.reset_input else st.session_state.get("current_input", "")
         user_input = st.text_area(
             "Message", 
-            value=st.session_state.user_input,
-            key="text_input",  # Changed from user_input to avoid conflicts
+            value=default_value,
+            key="input_area",
             label_visibility="collapsed"
         )
+        # Store current input value
+        st.session_state.current_input = user_input
     
     with col2:
         audio_bytes = audio_recorder(
@@ -338,9 +343,13 @@ def render_input_area(client):
             "audio_path": audio_path
         })
         
-        # Clear input by updating session state
-        st.session_state.user_input = ""
-        st.session_state.text_input = ""  # Clear the text area
+        # Trigger input reset for next rerun
+        st.session_state.reset_input = True
+        st.session_state.current_input = ""
+        st.rerun()
+    
+    # Reset the reset flag after rerun
+    st.session_state.reset_input = False
     
     # Handle voice input
     if audio_bytes:
