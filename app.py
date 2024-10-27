@@ -14,151 +14,56 @@ load_dotenv()
 # Set page configuration
 st.set_page_config(
     page_title="AI Voice & Text Assistant",
-    page_icon="🤖",
+    page_icon="🎙️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS for OpenWebUI-like interface
+# Custom CSS
 st.markdown("""
     <style>
-        /* Global styles */
         .main {
-            background-color: #ffffff;
+            background-color: #f5f5f5;
         }
-        
-        [data-testid="stSidebar"] {
-            background-color: #f9fafb;
-        }
-        
-        /* Chat container */
-        .chat-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .message-container {
-            display: flex;
-            padding: 1rem !important;
-            margin: 0.5rem 0;
-            border-radius: 0.5rem !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-            margin-bottom: 1rem !important;
-        }
-        
-        .user-message {
-            background-color: #e7f5ff !important;
-            border: 1px solid #d0ebff !important;
-        }
-        
-        .assistant-message {
-            background-color: #f8f9fa !important;
-            border: 1px solid #e9ecef !important;
-        }
-        
-        .message-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-        
-        .message-content {
-            flex-grow: 1;
-        }
-        
-        /* Input area */
-        .input-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            padding: 1rem;
-            border-top: 1px solid #e5e7eb;
-            z-index: 1000;
-        }
-        
-        .stTextArea textarea {
-            border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-            padding: 0.75rem;
-            font-size: 1rem;
-            resize: none;
-            height: 60px !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-        
-        .stTextArea textarea:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-        }
-        
-        /* Buttons */
-        .stButton > button {
-            background-color: #2563eb;
-            color: white;
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            border: none;
-            height: 40px;
-            transition: all 0.2s;
-        }
-        
-        .stButton > button:hover {
-            background-color: #1d4ed8;
-        }
-        
-        /* Voice recorder */
-        .recorder-button {
-            background-color: transparent !important;
-            border: 1px solid #e5e7eb !important;
-            border-radius: 0.5rem !important;
-            color: #374151 !important;
-            padding: 0.5rem !important;
-        }
-        
-        /* Hide unnecessary elements */
-        #MainMenu, footer {
-            visibility: hidden;
-        }
-        
-        /* Audio player */
-        audio {
+        .stButton>button {
             width: 100%;
-            border-radius: 0.5rem;
-            margin-top: 0.5rem;
+            border-radius: 20px;
+            height: 3em;
+            background-color: #FF4B4B;
+            color: white;
+            border: none;
         }
-        
-        /* Status messages */
-        .status-message {
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            margin: 0.5rem 0;
-            font-size: 0.875rem;
+        .stButton>button:hover {
+            background-color: #FF2B2B;
+            color: white;
+            border: none;
         }
-        
-        .info {
-            background-color: #eff6ff;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
+        .recorder-button {
+            background-color: #FF4B4B !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 20px !important;
+            padding: 10px 20px !important;
         }
-        
-        .success {
-            background-color: #f0fdf4;
-            color: #166534;
-            border: 1px solid #bbf7d0;
+        .css-1v0mbdj.etr89bj1 {
+            margin-top: 20px;
         }
-        
-        .error {
-            background-color: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+        .status-box {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        .success-box {
+            background-color: #D1F2EB;
+            border: 1px solid #48C9B0;
+        }
+        .error-box {
+            background-color: #FADBD8;
+            border: 1px solid #E74C3C;
+        }
+        .info-box {
+            background-color: #D4E6F1;
+            border: 1px solid #3498DB;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -167,13 +72,14 @@ def initialize_lepton_client():
     api_token = os.getenv('LEPTON_API_TOKEN')
     if not api_token:
         raise ValueError("LEPTON_API_TOKEN not found in environment variables")
-    
+        
     return openai.OpenAI(
         base_url="https://llama3-1-405b.lepton.run/api/v1/",
         api_key=api_token
     )
 
 def process_audio_file(audio_file) -> str:
+    """Convert audio file to base64 string"""
     audio_bytes = audio_file.read()
     return base64.b64encode(audio_bytes).decode()
 
@@ -181,6 +87,8 @@ def generate_response(client,
                      prompt: str, 
                      audio_data: Optional[str] = None,
                      generate_audio: bool = False) -> tuple[str, List[str]]:
+    """Generate response from LLM with optional audio input/output"""
+    
     messages = []
     if audio_data:
         messages.append({"role": "user", "content": [{"type": "audio", "data": audio_data}]})
@@ -207,201 +115,184 @@ def generate_response(client,
     full_response = ""
     audio_chunks = []
 
-    # Get the message container from session state
-    message_container = st.session_state.get('message_container')
-    if message_container:
-        with message_container:
-            response_placeholder = st.empty()
+    response_placeholder = st.empty()
+    
+    for chunk in completion:
+        if not chunk.choices:
+            continue
+        
+        content = chunk.choices[0].delta.content
+        audio = getattr(chunk.choices[0], 'audio', [])
+        
+        if content:
+            full_response += content
+            response_placeholder.markdown(f"```\n{full_response}\n```")
             
-            for chunk in completion:
-                if not chunk.choices:
-                    continue
-                
-                content = chunk.choices[0].delta.content
-                audio = getattr(chunk.choices[0], 'audio', [])
-                
-                if content:
-                    full_response += content
-                    response_placeholder.markdown(full_response)
-                    
-                if audio:
-                    audio_chunks.extend(audio)
+        if audio:
+            audio_chunks.extend(audio)
 
     return full_response, audio_chunks
 
 def save_audio(audio_chunks: List[str]) -> str:
+    """Save audio chunks to a temporary file and return the path"""
     if not audio_chunks:
         return ""
-    
+        
     audio_data = b''.join([base64.b64decode(chunk) for chunk in audio_chunks])
     
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
         tmp_file.write(audio_data)
         return tmp_file.name
 
-def render_message(role: str, content: str, audio_path: Optional[str] = None):
-    """Render a chat message with OpenWebUI-like styling"""
-    avatar = "🤖" if role == "assistant" else "👤"
-    bg_class = "assistant-message" if role == "assistant" else "user-message"
-    
-    st.markdown(f"""
-        <div class="message-container {bg_class}">
-            <div class="message-avatar">{avatar}</div>
-            <div class="message-content">
-                {content}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    if audio_path:
-        st.audio(audio_path)
-
-def render_chat_interface():
-    # Initialize session state for messages
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    
-    # Chat container
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    
-    # Display chat messages
-    for message in st.session_state.messages:
-        render_message(
-            role=message["role"],
-            content=message["content"],
-            audio_path=message.get("audio_path")
-        )
-    
-    # Store message container in session state for streaming
-    message_container = st.container()
-    st.session_state.message_container = message_container
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    return message_container
-
-def render_input_area(client):
-    """Render the input area with text and voice options"""
-    st.markdown('<div class="input-container">', unsafe_allow_html=True)
-    
-    # Initialize session state for input reset
-    if "reset_input" not in st.session_state:
-        st.session_state.reset_input = False
+def render_sidebar():
+    with st.sidebar:
+        st.title("⚙️ Settings")
+        st.markdown("---")
         
-    col1, col2, col3 = st.columns([6, 1, 1])
+        st.subheader("Voice Settings")
+        voice_preset = st.selectbox(
+            "Voice Preset",
+            ["jessica", "josh", "emma", "michael"],
+            index=0
+        )
+        
+        st.markdown("---")
+        st.subheader("Model Settings")
+        max_tokens = st.slider(
+            "Max Response Length",
+            min_value=50,
+            max_value=500,
+            value=128,
+            step=10
+        )
+        
+        st.markdown("---")
+        st.markdown("""
+        ### About
+        This app uses Lepton AI to:
+        - Convert speech to text
+        - Generate AI responses
+        - Convert text to speech
+        """)
+
+def main():
+    render_sidebar()
+    
+    # Main content
+    st.title("🎙️ AI Voice & Text Assistant")
+    st.markdown("Interact with AI using voice or text input")
+    
+    # Initialize the client
+    try:
+        client = initialize_lepton_client()
+        with st.container():
+            st.markdown("""
+            <div class="status-box success-box">
+                ✅ Connected to Lepton AI API
+            </div>
+            """, unsafe_allow_html=True)
+    except Exception as e:
+        with st.container():
+            st.markdown(f"""
+            <div class="status-box error-box">
+                ❌ Failed to connect: {str(e)}<br>
+                Please check your LEPTON_API_TOKEN in .env file
+            </div>
+            """, unsafe_allow_html=True)
+        return
+
+    # Create two columns for input methods
+    col1, col2 = st.columns(2)
     
     with col1:
-        # Set empty default value when reset is triggered
-        default_value = "" if st.session_state.reset_input else st.session_state.get("current_input", "")
-        user_input = st.text_area(
-            "Message", 
-            value=default_value,
-            key="input_area",
-            label_visibility="collapsed"
-        )
-        # Store current input value
-        st.session_state.current_input = user_input
+        st.markdown("### 📝 Text Input")
+        user_input = st.text_area("Type your message:", height=150)
+        generate_audio = st.checkbox("Enable voice response", value=True)
+        
+        if st.button("Send Message"):
+            if user_input:
+                with st.spinner("🤖 AI is thinking..."):
+                    response_text, audio_chunks = generate_response(
+                        client, 
+                        user_input,
+                        generate_audio=generate_audio
+                    )
+                    
+                    if generate_audio:
+                        audio_path = save_audio(audio_chunks)
+                        if audio_path:
+                            st.markdown("### 🔊 AI Voice Response")
+                            with open(audio_path, 'rb') as audio_file:
+                                st.audio(audio_file.read(), format='audio/mp3')
+                            os.unlink(audio_path)
+            else:
+                st.warning("⚠️ Please enter a message.")
     
     with col2:
+        st.markdown("### 🎤 Voice Input")
+        st.markdown("Click the button below and start speaking:")
+        
+        # Add a placeholder for the recording status
+        status_placeholder = st.empty()
+        
         audio_bytes = audio_recorder(
             pause_threshold=2.0,
             sample_rate=44100,
             text="",
-            recording_color="#2563eb",
+            recording_color="#FF4B4B",
             neutral_color="#6B7280",
             icon_name="microphone",
-            icon_size="lg"
-        )
-    
-    with col3:
-        send_button = st.button("Send")
-    
-    # Handle text input
-    if send_button and user_input:
-        # Add user message to chat
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
-        
-        # Generate response
-        response_text, audio_chunks = generate_response(
-            client, 
-            user_input,
-            generate_audio=True
+            icon_size="2x"
         )
         
-        # Save audio if generated
-        audio_path = None
-        if audio_chunks:
-            audio_path = save_audio(audio_chunks)
-        
-        # Add assistant message to chat
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response_text,
-            "audio_path": audio_path
-        })
-        
-        # Trigger input reset for next rerun
-        st.session_state.reset_input = True
-        st.session_state.current_input = ""
-        st.rerun()
-    
-    # Reset the reset flag after rerun
-    st.session_state.reset_input = False
-    
-    # Handle voice input
-    if audio_bytes:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
-            tmp_file.write(audio_bytes)
+        if audio_bytes:
+            status_placeholder.markdown("""
+                <div class="status-box info-box">
+                    🎵 Audio recorded successfully!
+                </div>
+            """, unsafe_allow_html=True)
             
-            # Add user audio message
-            st.session_state.messages.append({
-                "role": "user",
-                "content": "🎤 Voice message",
-                "audio_path": tmp_file.name
-            })
+            st.markdown("### 📢 Your Recording")
+            st.audio(audio_bytes, format="audio/wav")
             
-            # Process voice input
-            with open(tmp_file.name, 'rb') as audio_file:
-                audio_data = process_audio_file(audio_file)
+            # Save the recorded audio temporarily
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
+                tmp_file.write(audio_bytes)
+                
+            generate_audio = st.checkbox("Enable voice response", value=True, key="voice_input_audio")
             
-            # Generate response
-            response_text, audio_chunks = generate_response(
-                client,
-                "",
-                audio_data=audio_data,
-                generate_audio=True
-            )
-            
-            # Save response audio
-            audio_path = None
-            if audio_chunks:
-                audio_path = save_audio(audio_chunks)
-            
-            # Add assistant message to chat
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response_text,
-                "audio_path": audio_path
-            })
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            if st.button("Process Recording"):
+                with open(tmp_file.name, 'rb') as audio_file:
+                    audio_data = process_audio_file(audio_file)
+                
+                with st.spinner("🎯 Processing your voice..."):
+                    response_text, audio_chunks = generate_response(
+                        client,
+                        "",
+                        audio_data=audio_data,
+                        generate_audio=generate_audio
+                    )
+                    
+                    if generate_audio:
+                        audio_path = save_audio(audio_chunks)
+                        if audio_path:
+                            st.markdown("### 🔊 AI Voice Response")
+                            with open(audio_path, 'rb') as audio_file:
+                                st.audio(audio_file.read(), format='audio/mp3')
+                            os.unlink(audio_path)
+                
+                os.unlink(tmp_file.name)
+        else:
+            status_placeholder.markdown("""
+                <div class="status-box info-box">
+                    🎤 Click the microphone to start recording
+                </div>
+            """, unsafe_allow_html=True)
 
-def main():
-    # Initialize client
-    try:
-        client = initialize_lepton_client()
-    except Exception as e:
-        st.error(f"Failed to initialize client: {str(e)}")
-        return
-    
-    # Render chat interface
-    message_container = render_chat_interface()
-    
-    # Render input area
-    render_input_area(client)
+    # Chat history section
+    st.markdown("---")
+    st.markdown("### 💬 Chat History")
+    st.info("Chat history is not yet implemented. Coming soon!")
 
 if __name__ == "__main__":
     main()
